@@ -57,7 +57,8 @@ This library use android based resources to download and cache images from a ser
 
 ## TODO
 
-* Update file based on update attribute on Media model.
+* update file based on update attribute on Media model.
+* teste suite
 
 ## License
 
