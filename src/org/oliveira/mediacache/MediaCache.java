@@ -71,6 +71,7 @@ public class MediaCache {
 				request.setType(media.getType());
 				request.setCurrent(current);
 				request.setOnReponse(response);
+				request.setContext(context);
 				request.execute(getServer() + "/" + media.getFile());
 				
 			}
@@ -92,7 +93,7 @@ public class MediaCache {
         	);
         }else{
         	current = new File(
-    			context.getFilesDir() + getFolder(), 
+    			context.getFilesDir(), 
     			name
         	);
         }
@@ -108,6 +109,7 @@ public class MediaCache {
 		private int type;
 		private File current;
 		private Bitmap bitmap;
+		private Context context;
 		
 		public OnMediaResponse getOnReponse() {
 			return onReponse;
@@ -150,6 +152,13 @@ public class MediaCache {
 		public void setBitmap(Bitmap bitmap) {
 			this.bitmap = bitmap;
 		}
+				
+		public Context getContext() {
+			return context;
+		}
+		public void setContext(Context context) {
+			this.context = context;
+		}
 		
 		@Override
 		protected String doInBackground(String... params) {
@@ -163,7 +172,18 @@ public class MediaCache {
 	    		connection.setDoOutput(true);
 	    		connection.connect();
 	            
-	            FileOutputStream out = new FileOutputStream(getCurrent());
+	    		FileOutputStream out = null;
+	    		if(hasSd()){
+	    			out = new FileOutputStream(getCurrent());
+	    		}else{
+	    			
+	    			System.out.println(getCurrent().getName());
+	    			out = getContext().openFileOutput(
+                		getCurrent().getName(), 
+                		Context.MODE_WORLD_READABLE
+                	);
+	    		}
+	    		
 	            InputStream is = connection.getInputStream();
 	            
 	            byte[] buffer = new byte[1024];
@@ -175,6 +195,8 @@ public class MediaCache {
 	            out.close();
 				
 			} catch(Exception e) {
+				
+				e.printStackTrace();
 				
 				setErrorCode(e.hashCode());
 				setErrorMessage(e.getLocalizedMessage());
