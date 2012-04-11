@@ -32,7 +32,10 @@ public class Media {
 			setDescription(json.getString("file"));
 			setFile(json.getString("file"));
 			setType(json.getInt("type"));
-			setUpdated(json.getString("updated"));
+			
+			if(json.has("updated")){
+				setUpdated(json.getString("updated"));
+			}
 			
 		} catch (JSONException e) {
 			e.printStackTrace();
