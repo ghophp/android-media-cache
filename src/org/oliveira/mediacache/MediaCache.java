@@ -54,7 +54,7 @@ public class MediaCache {
 		if(media != null){
 			
 			File current = getFile(media.getFile(), context);
-			if(current.exists()){
+			if(current.exists() && current.length() > 0){
 				
 				if(media.getType() == 0){
 					
