@@ -15,6 +15,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Environment;
+import android.widget.ImageView;
 
 public class MediaCache {
 	
@@ -26,6 +27,11 @@ public class MediaCache {
 		this.folder = folder;
 		this.sd = sd;
 		this.server = server;
+	}
+	
+	public MediaCache(String folder, boolean sd) {
+		this.folder = folder;
+		this.sd = sd;
 	}
 	
 	public boolean hasSd() {
@@ -54,12 +60,13 @@ public class MediaCache {
 		if(media != null){
 			
 			File current = getFile(media.getFile(), context);
-			if(current.exists() && current.length() > 0){
+			if(current.exists() && current.length() > 0 && 
+					current.lastModified() > media.getUpdated().getTimeInMillis()){
 				
-				if(media.getType() == 0){
+				if(media.getType() == Media.IMAGE){
 					
 					Bitmap bitmap = BitmapFactory.decodeFile(current.getAbsolutePath());
-					response.onBitmap(bitmap);
+					response.onBitmap(bitmap, null);
 				
 				}else{
 					response.onVideo(current.getAbsolutePath());
@@ -72,7 +79,42 @@ public class MediaCache {
 				request.setCurrent(current);
 				request.setOnReponse(response);
 				request.setContext(context);
-				request.execute(getServer() + "/" + media.getFile());
+				request.execute(getServer() + media.getFile());
+				
+			}
+			
+		}else{
+			throw new InvalidParameterException();
+		}
+		
+	}
+	
+	public void get(Media media, Context context, ImageView place, OnMediaResponse response) {
+		
+		if(media != null){
+			
+			File current = getFile(media.getFile(), context);
+			if(current.exists() && current.length() > 0 && 
+					current.lastModified() > media.getUpdated().getTimeInMillis()){
+				
+				if(media.getType() == Media.IMAGE){
+					
+					Bitmap bitmap = BitmapFactory.decodeFile(current.getAbsolutePath());
+					response.onBitmap(bitmap, place);
+				
+				}else{
+					response.onVideo(current.getAbsolutePath());
+				}
+				
+			}else{
+				
+				MediaRequest request = new MediaRequest();
+				request.setType(media.getType());
+				request.setCurrent(current);
+				request.setPlace(place);
+				request.setOnReponse(response);
+				request.setContext(context);
+				request.execute(getServer() + media.getFile());
 				
 			}
 			
@@ -110,6 +152,7 @@ public class MediaCache {
 		private File current;
 		private Bitmap bitmap;
 		private Context context;
+		private ImageView place;
 		
 		public OnMediaResponse getOnReponse() {
 			return onReponse;
@@ -160,6 +203,13 @@ public class MediaCache {
 			this.context = context;
 		}
 		
+		public ImageView getPlace() {
+			return place;
+		}
+		public void setPlace(ImageView place) {
+			this.place = place;
+		}
+		
 		@Override
 		protected String doInBackground(String... params) {
 			
@@ -176,8 +226,6 @@ public class MediaCache {
 	    		if(hasSd()){
 	    			out = new FileOutputStream(getCurrent());
 	    		}else{
-	    			
-	    			System.out.println(getCurrent().getName());
 	    			out = getContext().openFileOutput(
                 		getCurrent().getName(), 
                 		Context.MODE_WORLD_READABLE
@@ -203,7 +251,7 @@ public class MediaCache {
 			
 			}
 			
-			if(getType() == 0){
+			if(getType() == Media.IMAGE){
 				setBitmap(BitmapFactory.decodeFile(getCurrent().getAbsolutePath()));
 			}
 			
@@ -216,10 +264,10 @@ public class MediaCache {
 			
 			if(getOnReponse() != null){
 				
-				if(getType() == 0){
+				if(getType() == Media.IMAGE){
 					
 					if(getBitmap() != null){
-						getOnReponse().onBitmap(getBitmap());
+						getOnReponse().onBitmap(getBitmap(), getPlace());
 					}else{
 						
 						getOnReponse().onError(

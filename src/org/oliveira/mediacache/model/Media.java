@@ -10,6 +10,9 @@ import org.json.JSONObject;
 
 public class Media {
 	
+	public static final int IMAGE = 1;
+	public static final int VIDEO = 0;
+	
 	private int id = 0;
 	private String description = "";
 	private String file = "";
