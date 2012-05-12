@@ -97,6 +97,40 @@ public class MediaCache {
 		
 	}
 	
+	public void get(Media media, OnMediaResponse response, final int index) {
+		
+		if(media != null){
+			
+			File current = getFile(media.getFile(), context);
+			if(current.exists() && current.length() > 0 && 
+					current.lastModified() > media.getUpdated().getTimeInMillis()){
+				
+				if(media.getType() == Media.IMAGE){
+					
+					Bitmap bitmap = BitmapFactory.decodeFile(current.getAbsolutePath());
+					response.onBitmap(bitmap, index);
+				
+				}else{
+					response.onVideo(current.getAbsolutePath());
+				}
+				
+			}else{
+				
+				MediaRequest request = new MediaRequest();
+				request.setType(media.getType());
+				request.setCurrent(current);
+				request.setOnReponse(response);
+				request.setIndex(index);
+				request.execute(getServer() + media.getFile());
+				
+			}
+			
+		}else{
+			throw new InvalidParameterException();
+		}
+		
+	}
+	
 	private File getFile(String name, Context context){
     	
 		File current;
@@ -122,6 +156,7 @@ public class MediaCache {
 		private int type;
 		private File current;
 		private Bitmap bitmap;
+		private int index = -1;
 		
 		public OnMediaResponse getOnReponse() {
 			return onReponse;
@@ -149,6 +184,13 @@ public class MediaCache {
 		}
 		public void setBitmap(Bitmap bitmap) {
 			this.bitmap = bitmap;
+		}
+		
+		public int getIndex() {
+			return index;
+		}
+		public void setIndex(int index) {
+			this.index = index;
 		}
 		
 		@Override
@@ -205,11 +247,19 @@ public class MediaCache {
 			if(getOnReponse() != null){
 				
 				if(getType() == Media.IMAGE){
-					getOnReponse().onBitmap(getBitmap());
+					
+					if(getIndex() >= 0){
+						getOnReponse().onBitmap(getBitmap(), getIndex());
+					}else{
+						getOnReponse().onBitmap(getBitmap());
+					}
 				}else{
 					getOnReponse().onVideo(getCurrent().getAbsolutePath());
 				}				
 			}
+			
+			setBitmap(null);
+			setCurrent(null);
 		}
 		
 	}
