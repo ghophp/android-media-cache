@@ -18,6 +18,8 @@ import android.os.Environment;
 
 public class MediaCache {
 	
+	public static final int NO_INDEX = -1;
+	
 	private boolean sd = false;
 	private String folder;
 	private String server;
@@ -64,40 +66,7 @@ public class MediaCache {
 		this.context = context;
 	}
 	
-	public void get(Media media, OnMediaResponse response) {
-		
-		if(media != null){
-			
-			File current = getFile(media.getFile(), context);
-			if(current.exists() && current.length() > 0 && 
-					current.lastModified() > media.getUpdated().getTimeInMillis()){
-				
-				if(media.getType() == Media.IMAGE){
-					
-					Bitmap bitmap = BitmapFactory.decodeFile(current.getAbsolutePath());
-					response.onBitmap(bitmap);
-				
-				}else{
-					response.onVideo(current.getAbsolutePath());
-				}
-				
-			}else{
-				
-				MediaRequest request = new MediaRequest();
-				request.setType(media.getType());
-				request.setCurrent(current);
-				request.setOnReponse(response);
-				request.execute(getServer() + media.getFile());
-				
-			}
-			
-		}else{
-			throw new InvalidParameterException();
-		}
-		
-	}
-	
-	public void get(Media media, OnMediaResponse response, final int index) {
+	public void get(Media media, OnMediaResponse response, int index) {
 		
 		if(media != null){
 			
@@ -111,7 +80,7 @@ public class MediaCache {
 					response.onBitmap(bitmap, index);
 				
 				}else{
-					response.onVideo(current.getAbsolutePath());
+					response.onVideo(current.getAbsolutePath(), index);
 				}
 				
 			}else{
@@ -247,14 +216,9 @@ public class MediaCache {
 			if(getOnReponse() != null){
 				
 				if(getType() == Media.IMAGE){
-					
-					if(getIndex() >= 0){
-						getOnReponse().onBitmap(getBitmap(), getIndex());
-					}else{
-						getOnReponse().onBitmap(getBitmap());
-					}
+					getOnReponse().onBitmap(getBitmap(), getIndex());
 				}else{
-					getOnReponse().onVideo(getCurrent().getAbsolutePath());
+					getOnReponse().onVideo(getCurrent().getAbsolutePath(), getIndex());
 				}				
 			}
 			
