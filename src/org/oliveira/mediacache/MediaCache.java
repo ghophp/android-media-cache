@@ -1,6 +1,8 @@
 package org.oliveira.mediacache;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -76,7 +78,7 @@ public class MediaCache {
 				
 				if(media.getType() == Media.IMAGE){
 					
-					Bitmap bitmap = BitmapFactory.decodeFile(current.getAbsolutePath());
+					Bitmap bitmap = decodeFile(current);
 					response.onBitmap(bitmap, index);
 				
 				}else{
@@ -99,6 +101,31 @@ public class MediaCache {
 		}
 		
 	}
+	
+	private Bitmap decodeFile(File f) {
+        try {
+            
+        	BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            BitmapFactory.decodeStream(new FileInputStream(f),null,o);
+            
+            final int REQUIRED_SIZE = 270;
+            int width_tmp=o.outWidth, height_tmp=o.outHeight;
+            int scale=1;
+            while(true){
+                if(width_tmp/2<REQUIRED_SIZE || height_tmp/2<REQUIRED_SIZE)
+                    break;
+                width_tmp/=2;
+                height_tmp/=2;
+                scale*=2;
+            }
+            
+            BitmapFactory.Options o2 = new BitmapFactory.Options();
+            o2.inSampleSize=scale;
+            return BitmapFactory.decodeStream(new FileInputStream(f), null, o2);
+        } catch (FileNotFoundException e) {}
+        return null;
+    }
 	
 	private File getFile(String name, Context context){
     	
@@ -196,6 +223,7 @@ public class MediaCache {
 				
 			} catch(Exception e) {
 				
+				e.printStackTrace();
 				if(getOnReponse() != null){
 					getOnReponse().onError(e.getStackTrace());
 				}

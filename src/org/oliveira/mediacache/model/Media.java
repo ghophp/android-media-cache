@@ -33,11 +33,17 @@ public class Media {
 			
 			setId(json.getInt("id"));
 			setDescription(json.getString("file"));
-			setFile(json.getString("file"));
 			setType(json.getInt("type"));
+			if(getType() == IMAGE){
+				setFile("media_" + json.getString("file"));
+			}else{
+				setFile(json.getString("file"));
+			}
 			
 			if(json.has("updated")){
 				setUpdated(json.getString("updated"));
+			}else if(json.has("created")){
+				setUpdated(json.getString("created"));
 			}
 			
 		} catch (JSONException e) {
