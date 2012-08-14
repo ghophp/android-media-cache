@@ -1,6 +1,8 @@
 package org.oliveira.mediacache;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -15,23 +17,27 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Environment;
-import android.widget.ImageView;
 
 public class MediaCache {
+	
+	public static final int NO_INDEX = -1;
 	
 	private boolean sd = false;
 	private String folder;
 	private String server;
+	private Context context;
 	
-	public MediaCache(String folder, boolean sd, String server) {
+	public MediaCache(Context context, String folder, boolean sd, String server) {
 		this.folder = folder;
 		this.sd = sd;
 		this.server = server;
+		this.context = context;
 	}
 	
-	public MediaCache(String folder, boolean sd) {
+	public MediaCache(Context context, String folder, boolean sd) {
 		this.folder = folder;
 		this.sd = sd;
+		this.context = context;
 	}
 	
 	public boolean hasSd() {
@@ -55,7 +61,14 @@ public class MediaCache {
 		this.folder = folder;
 	}
 	
-	public void get(Media media, Context context, OnMediaResponse response) {
+	public Context getContext() {
+		return context;
+	}
+	public void setContext(Context context) {
+		this.context = context;
+	}
+	
+	public void get(Media media, OnMediaResponse response, int index) {
 		
 		if(media != null){
 			
@@ -65,11 +78,11 @@ public class MediaCache {
 				
 				if(media.getType() == Media.IMAGE){
 					
-					Bitmap bitmap = BitmapFactory.decodeFile(current.getAbsolutePath());
-					response.onBitmap(bitmap, null);
+					Bitmap bitmap = decodeFile(current);
+					response.onBitmap(bitmap, index);
 				
 				}else{
-					response.onVideo(current.getAbsolutePath());
+					response.onVideo(current.getAbsolutePath(), index);
 				}
 				
 			}else{
@@ -78,7 +91,7 @@ public class MediaCache {
 				request.setType(media.getType());
 				request.setCurrent(current);
 				request.setOnReponse(response);
-				request.setContext(context);
+				request.setIndex(index);
 				request.execute(getServer() + media.getFile());
 				
 			}
@@ -89,40 +102,30 @@ public class MediaCache {
 		
 	}
 	
-	public void get(Media media, Context context, ImageView place, OnMediaResponse response) {
-		
-		if(media != null){
-			
-			File current = getFile(media.getFile(), context);
-			if(current.exists() && current.length() > 0 && 
-					current.lastModified() > media.getUpdated().getTimeInMillis()){
-				
-				if(media.getType() == Media.IMAGE){
-					
-					Bitmap bitmap = BitmapFactory.decodeFile(current.getAbsolutePath());
-					response.onBitmap(bitmap, place);
-				
-				}else{
-					response.onVideo(current.getAbsolutePath());
-				}
-				
-			}else{
-				
-				MediaRequest request = new MediaRequest();
-				request.setType(media.getType());
-				request.setCurrent(current);
-				request.setPlace(place);
-				request.setOnReponse(response);
-				request.setContext(context);
-				request.execute(getServer() + media.getFile());
-				
-			}
-			
-		}else{
-			throw new InvalidParameterException();
-		}
-		
-	}
+	private Bitmap decodeFile(File f) {
+        try {
+            
+        	BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            BitmapFactory.decodeStream(new FileInputStream(f),null,o);
+            
+            final int REQUIRED_SIZE = 270;
+            int width_tmp=o.outWidth, height_tmp=o.outHeight;
+            int scale=1;
+            while(true){
+                if(width_tmp/2<REQUIRED_SIZE || height_tmp/2<REQUIRED_SIZE)
+                    break;
+                width_tmp/=2;
+                height_tmp/=2;
+                scale*=2;
+            }
+            
+            BitmapFactory.Options o2 = new BitmapFactory.Options();
+            o2.inSampleSize=scale;
+            return BitmapFactory.decodeStream(new FileInputStream(f), null, o2);
+        } catch (FileNotFoundException e) {}
+        return null;
+    }
 	
 	private File getFile(String name, Context context){
     	
@@ -146,33 +149,16 @@ public class MediaCache {
 	private class MediaRequest extends AsyncTask<String, Integer, String> {
 		
 		private OnMediaResponse onReponse;
-		private Integer errorCode;
-		private String errorMessage;
 		private int type;
 		private File current;
 		private Bitmap bitmap;
-		private Context context;
-		private ImageView place;
+		private int index = -1;
 		
 		public OnMediaResponse getOnReponse() {
 			return onReponse;
 		}
 		public void setOnReponse(OnMediaResponse onReponse) {
 			this.onReponse = onReponse;
-		}
-		
-		public Integer getErrorCode() {
-			return errorCode;
-		}
-		public void setErrorCode(Integer errorCode) {
-			this.errorCode = errorCode;
-		}
-		
-		public String getErrorMessage() {
-			return errorMessage;
-		}
-		public void setErrorMessage(String errorMessage) {
-			this.errorMessage = errorMessage;
 		}
 								
 		public int getType() {
@@ -195,19 +181,12 @@ public class MediaCache {
 		public void setBitmap(Bitmap bitmap) {
 			this.bitmap = bitmap;
 		}
-				
-		public Context getContext() {
-			return context;
-		}
-		public void setContext(Context context) {
-			this.context = context;
-		}
 		
-		public ImageView getPlace() {
-			return place;
+		public int getIndex() {
+			return index;
 		}
-		public void setPlace(ImageView place) {
-			this.place = place;
+		public void setIndex(int index) {
+			this.index = index;
 		}
 		
 		@Override
@@ -245,9 +224,9 @@ public class MediaCache {
 			} catch(Exception e) {
 				
 				e.printStackTrace();
-				
-				setErrorCode(e.hashCode());
-				setErrorMessage(e.getLocalizedMessage());
+				if(getOnReponse() != null){
+					getOnReponse().onError(e.getStackTrace());
+				}
 			
 			}
 			
@@ -265,32 +244,14 @@ public class MediaCache {
 			if(getOnReponse() != null){
 				
 				if(getType() == Media.IMAGE){
-					
-					if(getBitmap() != null){
-						getOnReponse().onBitmap(getBitmap(), getPlace());
-					}else{
-						
-						getOnReponse().onError(
-							getErrorCode(), 
-							getErrorMessage()
-						);
-						
-					}
+					getOnReponse().onBitmap(getBitmap(), getIndex());
 				}else{
-					
-					if(getCurrent().exists()){
-						getOnReponse().onVideo(getCurrent().getAbsolutePath());
-					}else{
-						
-						getOnReponse().onError(
-							getErrorCode(), 
-							getErrorMessage()
-						);
-						
-					}
-				}
-				
+					getOnReponse().onVideo(getCurrent().getAbsolutePath(), getIndex());
+				}				
 			}
+			
+			setBitmap(null);
+			setCurrent(null);
 		}
 		
 	}
